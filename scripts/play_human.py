@@ -16,7 +16,8 @@ from flight_sim.env import FlightDodgeEnv  # noqa: E402
 def main():
     env = FlightDodgeEnv(render_mode="human")
     obs, _ = env.reset(seed=0)
-    done = False
+    env.render()  # force pygame video system to initialize before event loop
+
     total_reward = 0.0
     steps = 0
 
@@ -27,27 +28,24 @@ def main():
                 env.close()
                 sys.exit(0)
         keys = pygame.key.get_pressed()
-        ax = (keys[pygame.K_RIGHT] - keys[pygame.K_LEFT])
-        ay = (keys[pygame.K_UP] - keys[pygame.K_DOWN])
+        ax = float(keys[pygame.K_RIGHT] - keys[pygame.K_LEFT])
+        ay = float(keys[pygame.K_UP] - keys[pygame.K_DOWN])
         action = np.array([ax, ay], dtype=np.float32)
 
         obs, reward, terminated, truncated, _ = env.step(action)
         total_reward += reward
         steps += 1
 
-        # Hook a HUD into the renderer.
-        env.render()
-        if env._renderer is not None:
-            env._renderer.draw(
-                aircraft=env._aircraft,
-                turret=env._turret,
-                projectiles=[p for p in env._projectiles if p.alive],
-                info_lines=[
-                    f"steps: {steps}",
-                    f"reward: {total_reward:+.2f}",
-                    "arrows = thrust   esc = quit",
-                ],
-            )
+        env._renderer.draw(
+            aircraft=env._aircraft,
+            turret=env._turret,
+            projectiles=[p for p in env._projectiles if p.alive],
+            info_lines=[
+                f"steps: {steps}",
+                f"reward: {total_reward:+.2f}",
+                "arrows = thrust   esc = quit",
+            ],
+        )
 
         if keys[pygame.K_ESCAPE]:
             break

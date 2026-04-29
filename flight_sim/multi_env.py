@@ -23,7 +23,7 @@ turret   : Box(2,)  [aim, fire]
 Reward scheme (zero-sum + small efficiency cost)
 ------------------------------------------------
 aircraft_reward  : same dense reward used by FlightDodgeEnv.
-turret_reward    : -aircraft_reward - TURRET_FIRE_COST when it fired.
+turret_reward    : -aircraft_reward (zero-sum; turret always fires when ready).
 """
 
 from __future__ import annotations
@@ -57,8 +57,8 @@ from flight_sim.env import (
 TURRET_AIM_MIN = 0.05 * np.pi  # ≈ 9°  (just above the horizon, right side)
 TURRET_AIM_MAX = 0.95 * np.pi  # ≈ 171° (just above the horizon, left side)
 TURRET_AIM_RATE = 4.0  # rad / s — how fast the barrel can slew
-TURRET_FIRE_COOLDOWN = 0.5  # s minimum reload after a shot
-TURRET_FIRE_COST = 0.02  # per-fire reward penalty (efficiency)
+TURRET_FIRE_COOLDOWN_MIN = 0.2  # s — fastest fire rate (action[1] = +1)
+TURRET_FIRE_COOLDOWN_MAX = 1.2  # s — slowest fire rate (action[1] = -1); always fires
 
 AIRCRAFT_OBS_DIM = 5 + 4 * MAX_PROJECTILES
 TURRET_OBS_DIM = 8
@@ -113,7 +113,7 @@ class MultiFlightDodgeEnv:
         )
         self._turret = Turret(
             x=float(self._np_random.uniform(-WORLD_W * 0.4, WORLD_W * 0.4)),
-            cooldown=TURRET_FIRE_COOLDOWN,
+            cooldown=TURRET_FIRE_COOLDOWN_MAX,
             aim=float(np.pi / 2),
         )
         self._projectiles = []
@@ -132,9 +132,6 @@ class MultiFlightDodgeEnv:
 
         # Zero-sum opponent reward + small efficiency cost on firing.
         tu_reward = -ac_reward
-        if fired:
-            tu_reward -= TURRET_FIRE_COST
-
         self._steps += 1
         rewards = {"aircraft": float(ac_reward), "turret": float(tu_reward)}
         terms = {"aircraft": terminated, "turret": terminated}
@@ -169,15 +166,15 @@ class MultiFlightDodgeEnv:
 
         t.cooldown -= DT
         fired = False
-        if (
-            float(action[1]) > 0.0
-            and t.cooldown <= 0.0
-            and len(self._projectiles) < MAX_PROJECTILES
-        ):
+        if t.cooldown <= 0.0 and len(self._projectiles) < MAX_PROJECTILES:
             vx = PROJECTILE_SPEED * float(np.cos(t.aim))
             vy = PROJECTILE_SPEED * float(np.sin(t.aim))
             self._projectiles.append(Projectile(x=t.x, y=t.y + 1.0, vx=vx, vy=vy))
-            t.cooldown = TURRET_FIRE_COOLDOWN
+            # action[1] in [-1, 1] maps to cooldown [MAX, MIN]:
+            # -1 → slow (bare minimum rate), +1 → fast (max fire rate).
+            fire_signal = float(np.clip(action[1], -1.0, 1.0))
+            alpha = (fire_signal + 1.0) / 2.0  # 0..1
+            t.cooldown = TURRET_FIRE_COOLDOWN_MAX - alpha * (TURRET_FIRE_COOLDOWN_MAX - TURRET_FIRE_COOLDOWN_MIN)
             fired = True
         return fired
 
@@ -261,7 +258,7 @@ class MultiFlightDodgeEnv:
         obs[4] = ac.vy / AIRCRAFT_MAX_SPEED
         obs[5] = float(np.cos(t.aim))
         obs[6] = float(np.sin(t.aim))
-        obs[7] = float(np.clip(t.cooldown / TURRET_FIRE_COOLDOWN, 0.0, 1.0))
+        obs[7] = float(np.clip(t.cooldown / TURRET_FIRE_COOLDOWN_MAX, 0.0, 1.0))
         return obs
 
     # ------------------------------------------------------------------ render
