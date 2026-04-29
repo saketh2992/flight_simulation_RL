@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+env/
+
+# Training artifacts
+runs/
+logs/
+models/
+tensorboard/
+*.zip
+*.pkl
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+*.swp
