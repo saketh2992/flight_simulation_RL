@@ -1,4 +1,4 @@
-"""Alternating self-play: 20 cycles of (turret 1M → aircraft 1M), starting from selfplay_v2 cycle 3."""
+"""Alternating self-play: 20 cycles of (turret 1M → aircraft 1M)."""
 
 from __future__ import annotations
 
@@ -17,11 +17,10 @@ import flight_sim  # noqa: F401
 from flight_sim.multi_env import MultiFlightDodgeEnv
 from flight_sim.wrappers import SingleAgentWrapper, policy_from_sb3
 
-# Start from the best checkpoints produced by selfplay_v2
-AIRCRAFT_START = Path("models/selfplay_v2/cycle03_aircraft.zip")
-TURRET_START   = Path("models/selfplay_v2/cycle03_turret.zip")
-CKPT_DIR       = Path("models/selfplay_v3")
-GIF_DIR        = Path("gifs/selfplay_v3")
+AIRCRAFT_START  = Path("models/ppo_flight_dodge")
+TURRET_START    = Path("models/ppo_turret")
+CKPT_DIR        = Path("models/selfplay_v3")
+GIF_DIR         = Path("gifs/selfplay_v3")
 STEPS_PER_ROUND = 1_000_000
 CYCLES          = 20
 
@@ -76,7 +75,6 @@ def main():
     results = []
 
     for cycle in range(1, CYCLES + 1):
-        # ── Train turret ────────────────────────────────────────────────
         print(f"\n{'='*60}", flush=True)
         print(f"  CYCLE {cycle:02d}/{CYCLES}  —  TURRET trains  (aircraft frozen)", flush=True)
         print(f"{'='*60}", flush=True)
@@ -90,7 +88,6 @@ def main():
         results.append((f"C{cycle:02d} turret", len(frames)))
         print(f"  → aircraft survived {len(frames)} frames", flush=True)
 
-        # ── Train aircraft ───────────────────────────────────────────────
         print(f"\n{'='*60}", flush=True)
         print(f"  CYCLE {cycle:02d}/{CYCLES}  —  AIRCRAFT trains  (turret frozen)", flush=True)
         print(f"{'='*60}", flush=True)
@@ -104,18 +101,15 @@ def main():
         results.append((f"C{cycle:02d} aircraft", len(frames)))
         print(f"  → aircraft survived {len(frames)} frames", flush=True)
 
-        # Running summary every 5 cycles
         if cycle % 5 == 0:
-            print(f"\n--- Progress so far ---", flush=True)
+            print(f"\n--- Summary after cycle {cycle} ---", flush=True)
             for label, s in results[-10:]:
                 print(f"  {label}: {s} frames", flush=True)
 
     print(f"\n{'='*60}", flush=True)
-    print("ALL DONE — final results:", flush=True)
+    print("ALL DONE", flush=True)
     for label, s in results:
-        print(f"  {label}: {s} frames", flush=True)
-    print(f"\nCheckpoints: {CKPT_DIR}/", flush=True)
-    print(f"GIFs:        {GIF_DIR}/", flush=True)
+        print(f"  {label}: {s}", flush=True)
 
 
 if __name__ == "__main__":
