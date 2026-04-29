@@ -78,6 +78,7 @@ class Turret:
     x: float
     y: float = FLOOR_Y
     cooldown: float = 0.0
+    aim: float = float(np.pi / 2)  # current barrel angle, radians (π/2 = straight up)
 
 
 class FlightDodgeEnv(gym.Env):
